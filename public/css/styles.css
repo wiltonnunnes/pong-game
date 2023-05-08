@@ -17,3 +17,19 @@ body {
 #gameCanvas {
     align-self: center;
 }
+
+form {
+    margin-top: 20px;
+}
+
+input {
+    font-size: 2em;
+    width: 100%;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+    font-size: 2em;
+    margin: 12px 0;
+}
