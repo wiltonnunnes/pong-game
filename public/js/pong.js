@@ -22,13 +22,7 @@ const handleSubmit = (event) => {
 const canvasWidth = 864;
 const canvasHeight = 600;
 
-const gameState = {
-    running: false,
-    player1YPos: canvasWidth / 2 - 64,
-    player2YPos: canvasWidth / 2 - 64,
-    ballPos: [canvasWidth / 2 - 16, canvasHeight / 2 - 16],
-    message: ""
-};
+let gameState = null;
 
 let canvas = document.getElementById('gameCanvas');
 let context = canvas.getContext('2d');
@@ -52,19 +46,12 @@ const render = () => {
 
 const socket = new WebSocket('ws://localhost:8080');
 socket.addEventListener('open', (event) => {
-    
+    gameState = JSON.parse(event.data);
+    render();
 });
 
 socket.addEventListener('message', (event) => {
-    const object = JSON.parse(event.data);
-    console.log(event.data);
-
-    gameState.running = object.running;
-    gameState.player1YPos = object.player1YPos;
-    gameState.player2YPos = object.player2YPos;
-    gameState.ballPos = object.ballPos;
-    gameState.message = object.message;
-
+    gameState = JSON.parse(event.data);
     render();
 });
 

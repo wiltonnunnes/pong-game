@@ -30,61 +30,69 @@ const server = http.createServer((req, res) => {
 });
 
 import Vec2 from "./vec2.js";
+import GameObject from "./game.object.js";
 
 const MAXBOUNCEANGLE = 5 * Math.PI / 12;
 const PADDLEHEIGHT = 128;
+const PADDLEWIDTH = 32;
+const COURTWIDTH = 864;
+const COURTHEIGHT = 600;
+const BALLRADIUS = 32;
 
 const speed = 20;
 
 let socket1 = null;
 let socket2 = null;
 
-const courtDimension = [864, 600];
-
 const paddle1 = {
-    x: 64,
-    y: courtDimension[1] / 2 - 64,
-    w: 32,
-    h: 128
+    position: new Vec2(PADDLEWIDTH * 2, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
+    scale: new Vec2(PADDLEWIDTH, PADDLEHEIGHT)
 };
 
 const paddle2 = {
-    x: courtDimension[0] - 96,
-    y: courtDimension[1] / 2 - 64,
-    w: 32,
-    h: 128
+    position: new Vec2(COURTWIDTH - PADDLEWIDTH * 3, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
+    scale: new Vec2(PADDLEWIDTH, PADDLEHEIGHT)
 };
 
 const ball = {
-    x: courtDimension[0] / 2 - 16,
-    y: courtDimension[1] / 2 - 16,
-    w: 32,
-    h: 32,
-    v: new Vec2(-1, 0).multiply(speed)
+    position: new Vec2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2),
+    scale: new Vec2(BALLRADIUS, BALLRADIUS)
 };
+
+const court = {
+    position: new Vec2(PADDLEWIDTH, 0),
+    scale: new Vec2(COURTWIDTH - PADDLEWIDTH * 2, COURTHEIGHT)
+};
+
+const ballVelocity = new Vec2(-1, 0);
 
 const createState = () => {
     if (socket2 !== null) {
         return {
             running: true,
-            player1YPos: paddle1.y,
-            player2YPos: paddle2.y,
-            ballPos: [ball.x, ball.y],
+            player1YPos: paddle1.position.y,
+            player2YPos: paddle2.position.y,
+            ballPos: [ball.position.x, ball.position.y],
             message: ""
         };
     } else {
         return {
             running: false,
-            player1YPos: courtDimension[1] / 2 - 64,
-            player2YPos: courtDimension[1] / 2 - 64,
-            ballPos: [courtDimension[0] / 2 - 16, courtDimension[1] / 2 - 16],
+            player1YPos: COURTHEIGHT / 2 - PADDLEHEIGHT / 2,
+            player2YPos: COURTHEIGHT / 2 - PADDLEHEIGHT / 2,
+            ballPos: [COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2],
             message: "Esperando por um Adversário"
         }
     }
 };
 
-const detectCollision = (x1, w1, x2, w2) => {
-    return (x1 <= x2 + w2 && x1 + w1 >= x2);
+const checkCollision = (obj1, obj2) => {
+    return (
+        obj1.position.x < obj2.position.x + obj2.scale.x && 
+        obj1.position.x + obj1.scale.x > obj2.position.x && 
+        obj1.position.y < obj2.position.y + obj2.scale.y && 
+        obj1.position.y + obj1.scale.y > obj2.position.y
+    );
 };
 
 const calcBounceAngle = (paddleY, intersectY) => {
@@ -102,40 +110,30 @@ const broadcast = (msg) => {
     }
 };
 
-const clamp = (value, min, max) => {
-    if (value < min)
-        return min;
-    else if (value > max)
-        return max;
-    else
-        return value;
-};
-
 const webSocketServer = new WebSocketServer({ port: 8080 });
 
 webSocketServer.on('connection', (socket) => {
+    socket.send(JSON.stringify(createState()));
     let paddle;
-    const state = JSON.stringify(createState());
     if (socket1 === null) {
         socket1 = socket;
-        socket.send(state);
         paddle = paddle1;
     } else {
         socket2 = socket;
-        socket.send(state);
-        socket1.send(state);
         paddle = paddle2;
     }
 
-    socket.on('message', (msg) => {
-        paddle.y = clamp(paddle.y + parseInt(msg) * speed, 0, courtDimension[1] - paddle.h);
-        socket1.send(JSON.stringify(createState()));
-        if (socket2 !== null)
-            socket2.send(JSON.stringify(createState()));
+    socket.on('message', (mouseY) => {
+        paddle.position.add(new Vec2(0, parseInt(mouseY))).clampScalar(0, COURTHEIGHT);
+        broadcast(JSON.stringify(createState()));
     });
 
     socket.on('close', () => {
-        socket = null;
+        if (socket === socket1) {
+            socket1 = null;
+        } else {
+            socket2 = null;
+        }
         broadcast(JSON.stringify(createState()));
     });
 });
@@ -143,15 +141,15 @@ webSocketServer.on('connection', (socket) => {
 let frame = 1000 / 60;
 let loop = () => {
     if (socket1 !== null && socket2 !== null) {
-        if (detectCollision(ball.x, ball.w, paddle1.x, paddle1.w)) {
-            ball.v.rotate(calcBounceAngle(paddle1.y, ball.y + ball.h / 2));
+        if (checkCollision(ball, paddle1) || checkCollision(ball, paddle2)) {
+            //ball.v.rotate(calcBounceAngle(paddle1.y, ball.y + ball.h / 2));
+            ballVelocity.negate();
         }
-        if (detectCollision(ball.x, ball.w, paddle2.x, paddle2.w)) {
-            ball.v.rotate(calcBounceAngle(paddle2.y, ball.y + ball.h / 2));
+        if (!checkCollision(ball, court)) {
+            ball.position = new Vec2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2);
         }
 
-        ball.x += ball.v.x;
-        ball.y += ball.v.y;
+        ball.position.add(ballVelocity);
         broadcast(JSON.stringify(createState()));
     }
 
