@@ -1,12 +1,14 @@
-class Vec2 {
+class Vector2 {
+    static left = new Vector2(-1, 0);
+
     constructor(x, y) {
         this.x = x;
         this.y = y;
     }
 
-    add(vec2) {
-        this.x += vec2.x;
-        this.y += vec2.y;
+    add(v) {
+        this.x += v.x;
+        this.y += v.y;
         return this;
     }
 
@@ -16,7 +18,13 @@ class Vec2 {
         return this;
     }
 
-    multiply(scalar) {
+    multiply(v) {
+        this.x *= v.x;
+        this.y *= v.y;
+        return this;
+    }
+
+    multiplyScalar(scalar) {
         this.x *= scalar;
         this.y *= scalar;
         return this;
@@ -42,7 +50,12 @@ class Vec2 {
             this.y = max;
         else if (this.y < min)
             this.y = min;
+        return this;
+    }
+
+    clamp(min, max) {
+        return this;
     }
 }
 
-export default Vec2;
+export default Vector2;

@@ -29,8 +29,8 @@ const server = http.createServer((req, res) => {
     }
 });
 
-import Vec2 from "./vec2.js";
-import GameObject from "./game.object.js";
+import Vector2 from "./vector2.js";
+import { clampNumber } from "./math.utils.js";
 
 const MAXBOUNCEANGLE = 5 * Math.PI / 12;
 const PADDLEHEIGHT = 128;
@@ -45,26 +45,36 @@ let socket1 = null;
 let socket2 = null;
 
 const paddle1 = {
-    position: new Vec2(PADDLEWIDTH * 2, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
-    scale: new Vec2(PADDLEWIDTH, PADDLEHEIGHT)
+    position: new Vector2(PADDLEWIDTH * 2, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
+    scale: new Vector2(PADDLEWIDTH, PADDLEHEIGHT)
 };
 
 const paddle2 = {
-    position: new Vec2(COURTWIDTH - PADDLEWIDTH * 3, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
-    scale: new Vec2(PADDLEWIDTH, PADDLEHEIGHT)
+    position: new Vector2(COURTWIDTH - PADDLEWIDTH * 3, COURTHEIGHT / 2 - PADDLEHEIGHT / 2), 
+    scale: new Vector2(PADDLEWIDTH, PADDLEHEIGHT)
 };
 
 const ball = {
-    position: new Vec2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2),
-    scale: new Vec2(BALLRADIUS, BALLRADIUS)
+    position: new Vector2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2),
+    scale: new Vector2(BALLRADIUS, BALLRADIUS)
 };
 
 const court = {
-    position: new Vec2(PADDLEWIDTH, 0),
-    scale: new Vec2(COURTWIDTH - PADDLEWIDTH * 2, COURTHEIGHT)
+    position: new Vector2(PADDLEWIDTH, 0),
+    scale: new Vector2(COURTWIDTH - PADDLEWIDTH * 2, COURTHEIGHT)
 };
 
-const ballVelocity = new Vec2(-1, 0);
+const topLine = {
+    position: new Vector2(PADDLEWIDTH, -1),
+    scale: new Vector2(COURTWIDTH - PADDLEWIDTH * 2, 0)
+}
+
+const bottomLine = {
+    position: new Vector2(PADDLEWIDTH, COURTHEIGHT + 1),
+    scale: new Vector2(COURTWIDTH - PADDLEWIDTH * 2, 0)
+}
+
+let ballVelocity = Vector2.left;
 
 const createState = () => {
     if (socket2 !== null) {
@@ -110,6 +120,9 @@ const broadcast = (msg) => {
     }
 };
 
+const maxClients = 2;
+let rooms = {};
+
 const webSocketServer = new WebSocketServer({ port: 8080 });
 
 webSocketServer.on('connection', (socket) => {
@@ -124,7 +137,7 @@ webSocketServer.on('connection', (socket) => {
     }
 
     socket.on('message', (mouseY) => {
-        paddle.position.add(new Vec2(0, parseInt(mouseY))).clampScalar(0, COURTHEIGHT);
+        paddle.position.add(new Vector2(0, clampNumber(parseInt(mouseY), 0, COURTHEIGHT - paddle.scale.y)));
         broadcast(JSON.stringify(createState()));
     });
 
@@ -136,17 +149,41 @@ webSocketServer.on('connection', (socket) => {
         }
         broadcast(JSON.stringify(createState()));
     });
+
+    const genKey = (length) => {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        for (let i = 0; i < length; i++) {
+            result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+    };
+
+    const createRoom = () => {
+        const room = genKey(5);
+        rooms[room] = [socket];
+    };
 });
 
 let frame = 1000 / 60;
 let loop = () => {
     if (socket1 !== null && socket2 !== null) {
-        if (checkCollision(ball, paddle1) || checkCollision(ball, paddle2)) {
-            //ball.v.rotate(calcBounceAngle(paddle1.y, ball.y + ball.h / 2));
-            ballVelocity.negate();
+        if (checkCollision(ball, paddle1)) {
+            ballVelocity.rotate(calcBounceAngle(paddle1.position.y, ball.position.y + ball.scale.y / 2));
+            ballVelocity.multiply(new Vector2(-1, 1));
+        }
+        if (checkCollision(ball, paddle2)) {
+            ballVelocity.rotate(calcBounceAngle(paddle2.position.y, ball.position.y + ball.scale.y / 2));
+            ballVelocity.multiply(new Vector2(-1, 1));
         }
         if (!checkCollision(ball, court)) {
-            ball.position = new Vec2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2);
+            ballVelocity = Vector2.left;
+        }
+        if (checkCollision(ball, topLine)) {
+            ballVelocity.multiply(new Vector2(1, -1));
+        }
+        if (checkCollision(ball, bottomLine)) {
+            ballVelocity.multiply(new Vector2(1, -1));
         }
 
         ball.position.add(ballVelocity);
