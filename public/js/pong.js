@@ -24,22 +24,26 @@ const canvasHeight = 600;
 
 let gameState = null;
 
+const maxPoints = 10;
+
 let canvas = document.getElementById('gameCanvas');
 let context = canvas.getContext('2d');
 
 context.fillStyle = 'green';
 context.fillRect(0, 0, 32, 600);
 context.fillRect(832, 0, 32, 600);
+context.font = "30px Arial";
+context.textAlign = "center";
 
 const render = () => {
     context.clearRect(32, 0, canvasWidth - 64, canvasHeight);
-    context.fillRect(64, gameState.player1YPos, 32, 128);
-    context.fillRect(canvasWidth - 3 * 32, gameState.player2YPos, 32, 128);
+    context.fillRect(64, gameState.paddle1YPos, 32, 128);
+    context.fillRect(canvasWidth - 3 * 32, gameState.paddle2YPos, 32, 128);
     context.fillRect(gameState.ballPos[0], gameState.ballPos[1], 32, 32);
+    context.fillText(`${gameState.points1}/${maxPoints}`, canvasWidth / 4, 30);
+    context.fillText(`${gameState.points2}/${maxPoints}`, canvasWidth - canvasWidth / 4, 30);
 
     if (!gameState.running) {
-        context.font = "30px Arial";
-        context.textAlign = "center";
         context.fillText(gameState.message, canvasWidth / 2, canvasHeight - 64);
     }
 };

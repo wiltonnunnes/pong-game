@@ -1,5 +1,8 @@
+import { clampNumber } from "./math-utils.js";
+
 class Vector2 {
     static left = new Vector2(-1, 0);
+    static zero = new Vector2(0, 0);
 
     constructor(x, y) {
         this.x = x;
@@ -37,7 +40,7 @@ class Vector2 {
     }
 
     negate() {
-        return this.multiply(-1);
+        return this.multiplyScalar(-1);
     }
 
     clampScalar(min, max) {
@@ -54,7 +57,18 @@ class Vector2 {
     }
 
     clamp(min, max) {
+        this.x = clampNumber(this.x, min.x, max.x);
+        this.y = clampNumber(this.y, min.y, max.y);
         return this;
+    }
+
+    setY(y) {
+        this.y = y;
+        return this;
+    }
+
+    clone() {
+        return new Vector2(this.x, this.y);
     }
 }
 
