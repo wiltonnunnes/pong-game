@@ -110,6 +110,10 @@ const broadcast = (msg) => {
     }
 };
 
+const randomUnitVector = () => {
+    
+};
+
 const maxClients = 2;
 let rooms = {};
 
