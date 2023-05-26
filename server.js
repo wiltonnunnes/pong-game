@@ -9,8 +9,8 @@ const COURTWIDTH = 864;
 const COURTHEIGHT = 600;
 const BALLRADIUS = 32;
 
-const paddleSpeed = 20;
-const ballSpeed = 2;
+const paddleSpeed = 10;
+const ballSpeed = 10;
 
 let socket1 = null;
 let socket2 = null;
@@ -60,7 +60,7 @@ const rightLine = {
     scale: new Vector2(0, COURTHEIGHT)
 };
 
-let ballVelocity = Vector2.left.multiply(ballSpeed);
+let ballVelocity = new Vector2(-ballSpeed, 0);
 
 const createState = () => {
     if (socket2 !== null) {
@@ -131,7 +131,7 @@ webSocketServer.on('connection', (socket) => {
     }
 
     socket.on('message', (mouseY) => {
-        paddle.position.setY(clampNumber(paddle.position.y + parseInt(mouseY), 0, COURTHEIGHT - paddle.scale.y));
+        paddle.position.setY(clampNumber(paddle.position.y + parseInt(mouseY) * paddleSpeed, 0, COURTHEIGHT - paddle.scale.y));
         broadcast(JSON.stringify(createState()));
     });
 
@@ -162,11 +162,11 @@ webSocketServer.on('connection', (socket) => {
 let frame = 1000 / 60;
 let loop = () => {
     if (socket1 !== null && socket2 !== null) {
-        if (checkCollision(ball, paddle1)) {
+        if (checkCollision(ball, paddle1) && ballVelocity.x < 0) {
             ballVelocity.rotate(calcBounceAngle(paddle1.position.y, ball.position.y + ball.scale.y / 2));
             ballVelocity.multiply(new Vector2(-1, 1));
         }
-        if (checkCollision(ball, paddle2)) {
+        if (checkCollision(ball, paddle2) && ballVelocity.x > 0) {
             ballVelocity.rotate(calcBounceAngle(paddle2.position.y, ball.position.y + ball.scale.y / 2));
             ballVelocity.multiply(new Vector2(-1, -1));
         }
@@ -178,12 +178,12 @@ let loop = () => {
         }
         if (checkCollision(ball, leftLine)) {
             points2 += 1;
-            ballVelocity = Vector2.left.clone().multiply(ballSpeed);
+            ballVelocity = new Vector2(-ballSpeed, 0);
             ball.position = new Vector2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2);
         }
         if (checkCollision(ball, rightLine)) {
             points1 += 1;
-            ballVelocity = Vector2.left.clone().multiply(ballSpeed);
+            ballVelocity = new Vector2(-ballSpeed, 0);
             ball.position = new Vector2(COURTWIDTH / 2 - BALLRADIUS / 2, COURTHEIGHT / 2 - BALLRADIUS / 2);
         }
 
